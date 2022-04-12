@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Love-for-the-Uglies</title>
+    <link rel="icon" href="{{ url_for('static', filename='images/favicon.ico') }}">
+    <style>
+        body {
+            background-color: #f4f4f4!important;
+        }
+        image {
+            max-width: 100%;
+            max-height: 160px;
+        }
+    </style>
+    {% block css %}
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    {% endblock %}
+</head>
+<body>
+    <div>
+        {% include "components/header.html" %}
+    </div>
+    <div class="container" style="min-height: calc(100vh - 100px);display: flex;justify-content: center;align-items: center;width: 100%;padding: 50px 0px;">
+        {% block content %}
+        {% endblock %}
+    </div>
+    <div>
+        {% include "components/footer.html" %}
+    </div>
+    {% block js %}
+        <script src="{{ url_for('static', filename='js/jquery-3.6.0.min.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+        <script>
+            function parseTag(str) {
+                return str.split(',').map(item => {
+                    return `<a href="#" rel="tag">${item}</a>`;
+                }).join(',')
+            }
+            function formatNumber(n) {
+              n = n.toString();
+              return n[1] ? n : '0' + n;
+            }
+            function formatTime(data) {
+                const date = new Date(data);
+                const year = date.getFullYear();
+                const month = date.getMonth() + 1;
+                const day = date.getDate();
+                const hour = date.getHours();
+                const minute = date.getMinutes();
+                const second = date.getSeconds();
+                return [year, month, day].map(formatNumber).join('-') + ' ' + [hour, minute, second].map(formatNumber).join(':');
+            }
+        </script>
+    {% endblock %}
+</body>
+</html>

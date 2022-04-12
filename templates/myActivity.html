@@ -1,0 +1,205 @@
+{% extends "components/master.html" %}
+{% block content %}
+    <style>
+        .item-description {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+        }
+        .post-item {
+            border-bottom: dotted 1px #ddd;
+            padding-bottom: 10px;
+            position: relative;
+        }
+        .post-item:last-of-type {
+            border-bottom: none;
+        }
+        .post-title {
+            cursor: pointer;
+        }
+        .meta-box {
+            -webkit-tap-highlight-color: rgba(0,0,0,0);
+            -webkit-text-size-adjust: 100%;
+            text-rendering: optimizelegibility;
+            --color-input-bg: #f4f5f5;
+            --color-input-error-bg: #ffece8;
+            --color-input-placeholder: #86909c;
+            --color-input-text: #4e5969;
+            --color-input-icon: #f53f3f;
+            font-weight: 400;
+            font-family: Lantinghei SC,Heiti SC,Microsoft YaHei,lucida grande,lucida sans unicode,lucida,Helvetica Neue,helvetica,Hiragino Sans GB,WenQuanYi Micro Hei,sans-serif;
+            font-size: 13px;
+            line-height: 1.8;
+            {#color: #0a0a0a;#}
+            box-sizing: border-box;
+            padding: 0;
+            border: none;
+            margin: 1rem 0 .5rem;
+        }
+        .meta-box span {
+            box-sizing: border-box;
+            margin-right: 20px;
+            {#color: #d83c07;#}
+        }
+        .remove-btn {
+            position: absolute;
+            top: -10px;
+            right: 10px;
+        }
+        .count-text {
+            padding: 0px;
+            margin-top: 10px;
+            text-align: right;
+            font-size: 12px;
+            color: gray;
+        }
+    </style>
+    <div class="post-container" style="width: 60%;background: inherit;margin: 20px 0px;border-radius: 5px;"
+    >
+        <div class="container-fluid" style="background: white;margin-bottom: 10px;padding: 10px;border-radius: 5px;">
+            <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+              <div class="btn-group" role="group">
+                  <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <span id="sort-type">My Activity</span>
+                    <span class="caret"></span>
+                  </button>
+                  <ul class="dropdown-menu">
+                      <li><a class="sort-by" type="my">My Activity</a></li>
+                      <li><a class="sort-by" type="enroll">Participating Activity</a></li>
+                  </ul>
+              </div>
+                <a href="/createActivity">
+                  <button class="btn btn-success" type="button">
+                      New Activity
+                  </button>
+                </a>
+              <div class="nav navbar-nav navbar-right">
+                <div class="input-group">
+                  <input type="text" class="form-control" id="search-key" placeholder="Search">
+                  <span class="input-group-btn">
+                    <button class="btn btn-default" id="search-btn" type="button">Search</button>
+                  </span>
+                </div>
+              </div>
+            </div>
+        </div>
+        <div id="post-list" class="blog_post" style="background: white;padding: 20px;border-radius: 5px;"></div>
+    </div>
+{% endblock %}
+{% block js %}
+    {{ super() }}
+    <script>
+        let sortBy = 'asc';
+        function deleteActivity(id) {
+            const a = confirm("Delete this activity?")
+            if (a) {
+                $.ajax({
+                    url: '/deleteActivity',
+                    method: 'post',
+                    contentType: 'application/json',
+                    data: JSON.stringify({id}),
+                    success: function (res) {
+                        if (res === '0000') {
+                            getMyActivityData();
+                            alert('Done!')
+                        } else if (res === '9999') {
+                            alert('Permission denied.');
+                        }
+                    },
+                    error: function (error) {
+                        console.log(error)
+                        alert('Error.')
+                    }
+                });
+            }
+        }
+        function parsePostData(data) {
+            let html = '';
+            let isAdmin = "{{ session['is_admin'] }}";
+            let email = "{{ session['email'] }}";
+            console.log(isAdmin, email)
+            data.map(item => {
+            console.log(isAdmin, email, item.email, isAdmin === '1')
+                html += `<div class="list-group post-item">
+                ${(isAdmin === '1' || item.email === email) ? `<p class=\"remove-btn\" onClick=\"deleteActivity(${item.id })\"><i class=\"glyphicon glyphicon-remove\"></i></p>` : ""}
+                    <a href="/activity/${item.id}" class="post-title list-group-item-heading post_title"><h3>${item.activity_name}</h3></a>
+                    <div class="meta-box">
+                        <span class="m-post-user"><i class="glyphicon glyphicon-user"></i>${item.user_name}</span>
+                        <span class="m-post-date"><i class="glyphicon glyphicon-calendar"></i>${formatTime(Number(item.create_time))}</span>
+                        <span class="tag-links"><i class="glyphicon glyphicon-map-marker" aria-hidden="true"></i>
+                            ${item.destination}
+                        </span>
+                    </div>
+                    <p class="list-group-item-heading item-description short_description">
+                        ${item.description}
+                    </p>
+                    <p class="count-text">Number of participants: ${item.count || 0}</p>
+                </div>`
+            });
+            $("#post-list").html(html)
+        }
+        function sendRequest(type = '') {
+            $.ajax({
+                url: type === 'enroll' ? '/getMyEnrollActivityData' : '/getMyActivityData',
+                method: 'post',
+                dataType: 'json',
+                contentType: 'application/json',
+                data: JSON.stringify({sortBy}),
+                success: function (res) {
+                    let data = res.data || [];
+                    if (data.length === 0) {
+                        $("#post-list").html('<p>No data</p>')
+                    }
+                    parsePostData(data);
+                },
+                error: function (error) {
+                    alert('Error.')
+                }
+            });
+        }
+        function getMyEnrollData() {
+            sendRequest('enroll')
+        }
+        function getMyActivityData() {
+            sendRequest()
+        }
+        getMyActivityData();
+        $("#search-btn").on('click', function() {
+            let key = $("#search-key").val();
+            if (!key) {
+                getMyActivityData();
+            } else {
+                $.ajax({
+                    url: '/searchActivityData',
+                    method: 'post',
+                    dataType: 'json',
+                    contentType: 'application/json',
+                    data: JSON.stringify({key}),
+                    success: function(res) {
+                        let data = res.data || [];
+                        if (data.length === 0) {
+                            $("#post-list").html('<p>No data</p>')
+                        }
+                        parsePostData(data);
+                    },
+                    error: function (error) {
+                        alert('Error.')
+                    }
+                })
+            }
+        })
+        $(".sort-by").on('click', function() {
+            let typeText = $(this).text()
+            let text = $(this).attr("type")
+            $("#sort-type").text(typeText)
+            if (text === 'my') {
+                getMyActivityData();
+            } else if (text === 'enroll') {
+                getMyEnrollData('enroll');
+            }
+            {#getMyActivityData();#}
+        })
+    </script>
+{% endblock %}

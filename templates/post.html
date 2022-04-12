@@ -1,0 +1,316 @@
+{% extends "components/master.html" %}
+{% block content %}
+    <style>
+        .meta-box {
+            -webkit-tap-highlight-color: rgba(0,0,0,0);
+            -webkit-text-size-adjust: 100%;
+            text-rendering: optimizelegibility;
+            --color-input-bg: #f4f5f5;
+            --color-input-error-bg: #ffece8;
+            --color-input-placeholder: #86909c;
+            --color-input-text: #4e5969;
+            --color-input-icon: #f53f3f;
+            font-weight: 400;
+            font-family: Lantinghei SC,Heiti SC,Microsoft YaHei,lucida grande,lucida sans unicode,lucida,Helvetica Neue,helvetica,Hiragino Sans GB,WenQuanYi Micro Hei,sans-serif;
+            font-size: 13px;
+            line-height: 1.8;
+            {#color: #0a0a0a;#}
+            box-sizing: border-box;
+            padding: 0;
+            border: none;
+            margin: 1rem 0 .5rem;
+        }
+        .meta-box span {
+            box-sizing: border-box;
+            margin-right: 20px;
+            {#color: #d83c07;#}
+        }
+        .post-description {
+            -webkit-text-size-adjust: 100%;
+            -webkit-tap-highlight-color: rgba(0,0,0,0);
+            --color-input-bg: #f4f5f5;
+            --color-input-error-bg: #ffece8;
+            --color-input-placeholder: #86909c;
+            --color-input-text: #4e5969;
+            --color-input-icon: #f53f3f;
+            box-sizing: border-box;
+            overflow: auto;
+            font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
+            display: block;
+            padding: 9.5px;
+            margin: 20px 0px;
+            font-size: 13px;
+            line-height: 1.42857143;
+            color: #333;
+            word-break: break-all;
+            word-wrap: break-word;
+            background-color: #f5f5f5;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .post-content, .comment-detail {
+            font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
+            word-break: break-all;
+            word-wrap: break-word;
+            line-height: 1.4285713;
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 40px;
+        }
+        .comment-detail {
+            margin-bottom: 3px;
+        }
+        .star {
+            display: inline-block;
+            margin-top: 5px;
+            cursor: pointer;
+        }
+        .comment-item {
+            border-bottom: 1px solid #eee;
+            padding: 0px 20px 10px;
+            position: relative;
+        }
+        .comment-item:last-of-type {
+            border-bottom: none;
+        }
+        .remove-btn {
+            position: absolute;
+            top: 5px;
+            right: 10px;
+        }
+    </style>
+    <div class="post-container"
+        style="width: 60%;
+            background: white;
+            padding: 20px;
+            margin: 20px 0px;
+            border-radius: 5px;"
+    >
+        <h3 class="list-group-item-heading post_title">{{ title }}</h3>
+        <div class="meta-box">
+            <span class="m-post-user"><i class="glyphicon glyphicon-user"></i>{{ user_name }}</span>
+            <span class="m-post-user"><a href="mailto:{{ email }}">{{ email }}</a></span>
+            <span class="m-post-date"><i class="glyphicon glyphicon-calendar"></i><span id="post-time"></span></span>
+            <span class="tag-links"><i class="glyphicon glyphicon-tag" aria-hidden="true"></i>
+                <span id="tag-list"></span>
+            </span>
+        </div>
+        {% if description %}
+            <div class="list-group-item-heading post-description detailed_description">{{ description }}</div>
+        {% endif %}
+        <div class="post-content" id="post-content"></div>
+        <h4 style="border-bottom: 1px solid #eee;">comment</h4>
+        <div class="comment-editor" style="overflow: hidden;border-bottom: 1px solid #eee;padding-bottom: 20px;">
+            <form class="form-horizontal">
+              <div class="form-group">
+                <label for="title" class="col-sm-2 control-label">Rate</label>
+                <div class="col-sm-10">
+                    <span class="star">
+                        <b class="rate-star glyphicon glyphicon-star-empty"></b>
+                        <b class="rate-star glyphicon glyphicon-star-empty"></b>
+                        <b class="rate-star glyphicon glyphicon-star-empty"></b>
+                        <b class="rate-star glyphicon glyphicon-star-empty"></b>
+                        <b class="rate-star glyphicon glyphicon-star-empty"></b>
+                    </span>
+                </div>
+              </div>
+              <div class="form-group">
+                  <label for="tag" class="col-sm-2 control-label">Content</label>
+                  <div class="col-sm-10">
+                      <div id="comment-editor" style="z-index: 0;"></div>
+                  </div>
+              </div>
+            </form>
+            <div class="form-group">
+                <div class="col-sm-offset-2 col-sm-10">
+                    <button class="btn btn-default" id="btn-submit">Comment</button>
+                </div>
+            </div>
+        </div>
+        <div class="comment-list" id="comment-list"><p>Nothing.</p></div>
+    </div>
+{% endblock %}
+{% block js %}
+    {{ super() }}
+    <script src="{{ url_for('static', filename='js/wangEditor.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/i18next.min.js') }}"></script>
+    <script>
+        let recordRateStar = 3;
+        const starElement = $('.rate-star');  // rate star element list.
+        changeStarColor(3 - 1);
+        const E = window.wangEditor;
+        const i18next = window.i18next;
+        let editor = new E('#comment-editor');
+        editor.config.lang = 'en';
+        editor.i18next = i18next;
+        editor.config.height = 120;
+        editor.config.uploadImgServer = '/uploadImage';
+        editor.config.uploadImgMaxLength = 1;
+        editor.config.menus = [
+            'bold',
+            'italic',
+            'underline',
+            'emoticon',
+            'image',
+        ];
+        editor.config.customUploadImg = (resultFiles, insertImgFn) => {
+            const formData = new FormData();
+            formData.append('file', resultFiles[0]);
+            const xhr = new XMLHttpRequest();
+            xhr.onerror = (err) => {
+                alert(err);
+                console.log(err)
+            };
+            xhr.onload = () => {
+                if (xhr.status < 200 || xhr.status >= 300) {
+                    return false
+                }
+                const resData = JSON.parse(xhr.responseText);
+                if (resData.data.error === 0) {
+                    const url = resData.data.url;
+                    insertImgFn(url)
+                }
+            };
+            xhr.open('post', '/uploadImage', true);
+            xhr.send(formData)
+        };
+        editor.create();
+        function changeStarColor(index) {
+            for (let i = 0; i < 5; i++) {
+                if (i <= index) {
+                    starElement.eq(i).removeClass('glyphicon-star-empty').addClass('glyphicon-star')
+                } else {
+                    starElement.eq(i).removeClass('glyphicon-star').addClass('glyphicon-star-empty')
+                }
+            }
+        }
+        starElement.on('click', function() { // click star, change star color and record rate.
+            let index = $(this).index();
+            recordRateStar = index + 1;
+		    changeStarColor(index);
+        });
+        starElement.on('mouseover', function() { // change star color without record value.
+            let index = $(this).index();
+		    changeStarColor(index);
+        });
+        starElement.on('mouseout', function() { // recover star color with record rate.
+		    changeStarColor(recordRateStar - 1);
+        });
+        $('#btn-submit').click(() => {
+            let postId = {{ id|default('') }};
+            if (!postId) {
+                alert("Blog does't exist.");
+                return false;
+            }
+            let content = editor.txt.html();
+            if (!content) {
+                alert('Please enter your comment.');
+                return false;
+            }
+            const param = {
+                post_id: postId,
+                rate: recordRateStar,
+                content: encodeURIComponent(editor.txt.html())
+            };
+            $.ajax({
+                url: '/insertComment',
+                method: 'post',
+                data: JSON.stringify(param),
+                contentType: 'application/json;charset=UTF-8',
+                success: function (res) {
+                    if (res === '9999') {
+                        alert('Please login first.');
+                    } else if (res === '0000') {
+                        alert('Done.');
+                        getPostComment();
+                    } else {
+                        alert('Error!');
+                    }
+                },
+                error: function (err) {
+                    alert('Sorry, there is a problem with your operation.');
+                }
+            })
+        });
+        function parseComment(data) {
+            let htmlStr = '';
+            let isAdmin = "{{ session['is_admin'] }}";
+            let email = "{{ session['email'] }}";
+            data.map(item => {
+                htmlStr += `<div class="comment-item">
+                ${(isAdmin === '1' || item.email === email) ? `<p class="remove-btn" onClick="deletePostComment(${item.id})"><i class="glyphicon glyphicon-remove"></i></p>` : ""}
+                    <div class="meta-box" style="color: darkgrey;">
+                        <span class="m-post-user"><i class="glyphicon glyphicon-user" style="margin-right: 3px;"></i>${item.user_name}</span>
+                        <span class="m-post-user"><a href="mailto:${item.email}">${item.email}</a></span>
+                        <span class="m-post-date"><i class="glyphicon glyphicon-calendar"style="margin-right: 3px;"></i>${formatTime(Number(item.create_time))}</span>
+                    </div>
+                    <div class="comment-detail comment_text">${decodeURIComponent(item.content)}</div>
+                    <span class="star post_rating">${getRateHtml(item.rate)}</span>
+                </div>`
+            });
+            $('#comment-list').html(htmlStr);
+        }
+        function deletePostComment(id) {
+            const a = confirm("Delete this comment?")
+            if (a) {
+                $.ajax({
+                    url: '/deletePostComment',
+                    method: 'post',
+                    contentType: 'application/json',
+                    data: JSON.stringify({id}),
+                    success: function (res) {
+                        if (res === '0000') {
+                            getPostComment();
+                            alert('Done!')
+                        } else if (res === '9999') {
+                            alert('Permission denied.');
+                        }
+                    },
+                    error: function (error) {
+                        console.log(error)
+                        alert('Error.')
+                    }
+                });
+            }
+        }
+        function getRateHtml(rate) {
+            let htmlStr = ``;
+            for (let i = 0; i < 5; i++) {
+                if (i <= rate - 1) {
+                    htmlStr += '<b class="glyphicon glyphicon-star"></b>'
+                } else {
+                    htmlStr += '<b class="glyphicon glyphicon-star-empty"></b>'
+                }
+            }
+            return htmlStr;
+        }
+        function getPostComment() {
+            let postId = {{ id|default('') }};
+            $.ajax({
+                url: '/getPostComment',
+                method: 'post',
+                dataType: 'json',
+                data: JSON.stringify({post_id: postId}),
+                contentType: 'application/json;charset=UTF-8',
+                success: function (res) {
+                    console.log(res);
+                    console.log(res.data);
+                    parseComment(res.data || []);
+                },
+                error: function (err) {
+                    console.log(err)
+                }
+            })
+        }
+        let id = {{ id|default('') }};
+        if (id) {
+            let create_time = {{ create_time }}
+            $("#post-time").text(formatTime(Number(create_time)))
+            let tag = '{{ tag|default('') }}';
+            $("#tag-list").html(parseTag(tag));
+            let content = '{{ content|default('') }}';
+            $("#post-content").html(decodeURIComponent(content))
+            getPostComment()
+        }
+    </script>
+{% endblock %}
